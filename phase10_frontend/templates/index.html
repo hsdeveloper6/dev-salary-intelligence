@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Developer Salary Estimator · ECS 171</title>
+<style>
+  :root {
+    --bg: #f5f3ee; --card: #fffdf8; --ink: #1d1b16; --muted: #6b665c;
+    --line: #e2ddd1; --accent: #1f5f5b; --accent-soft: #dcebe8;
+    --up: #2f7a4a; --down: #b2452f; --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 "Iowan Old Style", "Palatino Linotype", Georgia, serif; }
+  header { padding: 32px 40px 8px; max-width: 1180px; margin: 0 auto; }
+  header h1 { margin: 0; font-size: 30px; letter-spacing: -0.01em; }
+  header p { margin: 6px 0 0; color: var(--muted); max-width: 720px; }
+  main { max-width: 1180px; margin: 0 auto; padding: 20px 40px 60px;
+         display: grid; grid-template-columns: 1fr 380px; gap: 28px; align-items: start; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 24px 16px 0; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px 24px; }
+  fieldset { border: 0; padding: 0; margin: 0 0 22px; }
+  legend { font: 600 12px/1 system-ui, sans-serif; text-transform: uppercase;
+           letter-spacing: .08em; color: var(--accent); margin-bottom: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px 18px; }
+  label { display: block; font: 500 13px/1.3 system-ui, sans-serif; margin-bottom: 5px; }
+  label small { color: var(--muted); font-weight: 400; }
+  input[type=number], select, .picker input {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px;
+    background: #fff; font: 14px system-ui, sans-serif; color: var(--ink); }
+  input:focus, select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .picker { position: relative; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+  .chip { background: var(--accent-soft); color: var(--accent); border-radius: 999px;
+          padding: 3px 10px; font: 13px system-ui, sans-serif; cursor: pointer; }
+  .chip:hover { text-decoration: line-through; }
+  .menu { position: absolute; z-index: 5; left: 0; right: 0; top: 38px; max-height: 220px; overflow: auto;
+          background: #fff; border: 1px solid var(--line); border-radius: 7px; display: none;
+          box-shadow: 0 6px 18px rgba(0,0,0,.08); }
+  .menu div { padding: 6px 10px; font: 14px system-ui, sans-serif; cursor: pointer; }
+  .menu div:hover { background: var(--accent-soft); }
+  button { background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+           padding: 11px 22px; font: 600 15px system-ui, sans-serif; cursor: pointer; }
+  button:hover { filter: brightness(1.1); }
+  aside { position: sticky; top: 20px; }
+  .big { font-size: 46px; font-weight: 700; letter-spacing: -0.02em; margin: 4px 0 0; }
+  .range { color: var(--muted); font: 14px system-ui, sans-serif; }
+  .muted { color: var(--muted); font: 13px/1.45 system-ui, sans-serif; }
+  .bars { margin-top: 16px; font: 13px system-ui, sans-serif; }
+  .bar { display: grid; grid-template-columns: 130px 1fr 54px; gap: 8px; align-items: center; margin: 7px 0; }
+  .track { position: relative; height: 12px; background: #f0ece3; border-radius: 3px; }
+  .track span { position: absolute; top: 0; height: 12px; border-radius: 3px; }
+  .track::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: #bdb6a8; }
+  .err { color: var(--down); font: 14px system-ui, sans-serif; }
+  footer { font: 12px system-ui, sans-serif; color: var(--muted); margin-top: 18px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Developer Salary Estimator</h1>
+  <p>Enter a developer's profile. Our rescaled elastic net (Zou &amp; Hastie, 2005), trained on Stack Overflow
+     surveys from 2011 to 2026, predicts their yearly pay at 2026 levels. Leave anything blank to skip it.</p>
+</header>
+
+<main>
+  <form id="f" class="card">
+    <fieldset>
+      <legend>About you</legend>
+      <div class="grid">
+        <div><label>Country</label><select name="Country_grouped" data-opt="Country_grouped"></select></div>
+        <div><label>Age</label><input type="number" name="Age" min="14" max="90" value="30"></div>
+        <div><label>Education</label><select name="EdLevel" data-opt="EdLevel"></select></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Experience</legend>
+      <div class="grid">
+        <div><label>Years coding <small>(total, incl. school)</small></label>
+             <input type="number" name="YearsCode" min="0" max="60" step="0.5" value="8"></div>
+        <div><label>Years of work experience</label>
+             <input type="number" name="WorkExp" min="0" max="60" step="0.5" value="5"></div>
+        <div><label>How you learned to code</label><div class="picker" data-list="LearnCode"></div></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Your job</legend>
+      <div class="grid">
+        <div><label>Job type</label><div class="picker" data-list="DevType"></div></div>
+        <div><label>Industry</label><select name="Industry" data-opt="Industry"></select></div>
+        <div><label>Company size</label><select name="OrgSize" data-opt="OrgSize"></select></div>
+        <div><label>Employment</label><div class="picker" data-list="Employment"></div></div>
+        <div><label>Remote work</label><select name="RemoteWork" data-opt="RemoteWork"></select></div>
+        <div><label>Developer role</label><select name="MainBranch" data-opt="MainBranch"></select></div>
+        <div><label>Influence on tech purchases</label><select name="PurchaseInfluence" data-opt="PurchaseInfluence"></select></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Tools</legend>
+      <div class="grid">
+        <div><label>Languages you've worked with</label><div class="picker" data-list="LanguageHaveWorkedWith"></div></div>
+        <div><label>Languages you want to work with</label><div class="picker" data-list="LanguageWantToWorkWith"></div></div>
+        <div><label>Operating system</label><div class="picker" data-list="OpSys"></div></div>
+      </div>
+    </fieldset>
+
+    <button type="submit">Estimate salary</button>
+  </form>
+
+  <aside class="card" id="out">
+    <div class="muted">Predicted yearly pay (USD)</div>
+    <div class="big" id="salary">—</div>
+    <div class="range" id="range">Fill in the form and press Estimate.</div>
+    <div class="bars" id="bars"></div>
+    <p class="muted" id="note"></p>
+    <footer>Model: elastic net, α = 0.00139, l1_ratio = 0.95, refit on all years.
+      Error when forecasting a new year (Run A test on 2026): RMSE 0.78 on log pay, median miss ≈ $28.6k.</footer>
+  </aside>
+</main>
+
+<script>
+const OPT = {{ options|tojson }};
+const DEF = {{ defaults|tojson }};
+const picks = {};
+const money = v => "$" + Math.round(v).toLocaleString();
+
+// single-answer dropdowns: blank first ("prefer not to say" -> "No answer")
+document.querySelectorAll("select[data-opt]").forEach(sel => {
+  const key = sel.dataset.opt;
+  sel.add(new Option("— skip —", ""));
+  OPT[key].forEach(v => {
+    const text = key === "OrgSize" ? (v <= 1 ? "Just me" : "about " + Math.round(v).toLocaleString() + " employees") : v;
+    sel.add(new Option(text, v));
+  });
+  if (DEF[key]) sel.value = DEF[key];
+});
+
+// multi-answer pickers: type to search, click to add, click a chip to remove
+document.querySelectorAll(".picker").forEach(box => {
+  const key = box.dataset.list; picks[key] = [];
+  box.innerHTML = '<input placeholder="Type to search…"><div class="menu"></div><div class="chips"></div>';
+  const [inp, menu, chips] = box.children;
+  const draw = () => {
+    chips.innerHTML = "";
+    picks[key].forEach(v => {
+      const c = document.createElement("span"); c.className = "chip"; c.textContent = v + " ×";
+      c.onclick = () => { picks[key] = picks[key].filter(x => x !== v); draw(); };
+      chips.appendChild(c);
+    });
+  };
+  const show = () => {
+    const q = inp.value.toLowerCase();
+    menu.innerHTML = "";
+    OPT[key].filter(v => !picks[key].includes(v) && v.toLowerCase().includes(q)).slice(0, 40).forEach(v => {
+      const d = document.createElement("div"); d.textContent = v;
+      d.onmousedown = e => { e.preventDefault(); picks[key].push(v); inp.value = ""; draw(); show(); };
+      menu.appendChild(d);
+    });
+    menu.style.display = menu.children.length ? "block" : "none";
+  };
+  inp.onfocus = show; inp.oninput = show; inp.onblur = () => menu.style.display = "none";
+});
+
+document.getElementById("f").onsubmit = async e => {
+  e.preventDefault();
+  const body = Object.fromEntries(new FormData(e.target));
+  Object.assign(body, picks);
+  const r = await fetch("/predict", { method: "POST", headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify(body) });
+  const d = await r.json();
+  if (!r.ok) { document.getElementById("range").innerHTML = '<span class="err">' + d.error + "</span>"; return; }
+
+  document.getElementById("salary").textContent = money(d.salary);
+  document.getElementById("range").textContent =
+    "About half of similar developers: " + money(d.low) + " – " + money(d.high);
+
+  const max = Math.max(...d.factors.map(f => Math.abs(f.pct)), 1);
+  document.getElementById("bars").innerHTML =
+    '<div class="muted" style="margin-bottom:6px">What moved the estimate, vs. an average respondent (' + money(d.average) + ")</div>" +
+    d.factors.map(f => {
+      const w = Math.min(Math.abs(f.pct) / max, 1) * 50;
+      const style = f.pct >= 0 ? `left:50%;width:${w}%;background:var(--up)` : `right:50%;width:${w}%;background:var(--down)`;
+      return `<div class="bar"><span>${f.label}</span><div class="track"><span style="${style}"></span></div>` +
+             `<span style="text-align:right;color:${f.pct >= 0 ? "var(--up)" : "var(--down)"}">${f.pct > 0 ? "+" : ""}${f.pct}%</span></div>`;
+    }).join("");
+
+  document.getElementById("note").textContent = d.yearsCodePro === null ? "" :
+    "Professional coding years estimated from your work experience: " + d.yearsCodePro +
+    " (the 2026 survey didn't ask this, so the model fills it the same way it did for real 2026 answers).";
+};
+</script>
+</body>
+</html>

@@ -1,3 +1,8 @@
 data/
 .DS_Store
 .ipynb_checkpoints/
+results/*.joblib
+phase10_frontend/results/
+__pycache__/
+combined/
+results/*.joblib

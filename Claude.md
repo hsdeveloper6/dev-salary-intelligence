@@ -12,8 +12,9 @@ on my resume and talk about in interviews.
 - Work in small steps. Plan big changes before making them.
 - I need to understand every line I keep (interviewers will ask), so explain
   non-obvious code and point out trade-offs.
-- After any change to the pipeline, run `python train_final.py --check` and
-  confirm it still gives 522 columns and validation RMSE ~0.6783.
+- After any change to the pipeline, run
+  `cd phase10_frontend && python train_final.py --check` and confirm it still
+  gives 522 columns and validation RMSE ~0.6783.
 - Commit after each working step with a clear message.
 
 ## Data

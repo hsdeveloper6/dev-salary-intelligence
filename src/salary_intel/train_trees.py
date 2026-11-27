@@ -82,13 +82,19 @@ class CATBOOST:
     """CatBoost is 10-20x slower than LightGBM on this data (5-10 min per fit on
     8 CPU cores), so it gets a smaller search: --trials 8 per variant, with a
     higher learning rate (0.15) so early stopping is reached in fewer trees.
-    Its result is less tuned than LightGBM's (60 trials per variant)."""
+    Its result is less tuned than LightGBM's (60 trials per variant).
+
+    The first search (seed 42, 8 trials) used l2_leaf_reg up to 30 and
+    random_strength up to 2. Run B's best settings sat at both upper edges, so the
+    grid was extended, and a second search (--append, seed 43) added trials on top,
+    the same way LightGBM's grid was extended. Depth stays at most 10 (1,024 leaves
+    per tree); depth 12 would make each tree about 4x slower."""
     name = "catboost"
     FIXED = dict(loss_function="RMSE", learning_rate=0.15, random_seed=42,
                  thread_count=8, verbose=0, allow_writing_files=False)
     SPACE = dict(depth=[4, 6, 8, 10],
-                 l2_leaf_reg=[1.0, 3.0, 10.0, 30.0],
-                 random_strength=[0.5, 1.0, 2.0],
+                 l2_leaf_reg=[1.0, 3.0, 10.0, 30.0, 100.0],
+                 random_strength=[0.5, 1.0, 2.0, 5.0],
                  bagging_temperature=[0.0, 0.5, 1.0],
                  border_count=[128, 254])
 

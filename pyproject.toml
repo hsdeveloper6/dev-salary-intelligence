@@ -15,6 +15,7 @@ dependencies = [
     "joblib",
     "flask",
     "matplotlib",
+    "lightgbm",
     # build_premerge runs the 2011-2016 cleaning notebooks
     "nbclient",
     "nbformat",

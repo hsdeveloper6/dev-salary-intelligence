@@ -20,10 +20,11 @@ on my resume and talk about in interviews.
 ## Data
 - The modeling dataset is `combined/all_years_fixed.csv` (386,701 rows). It is
   on my machine only, NOT in git. Never commit data files or `results/*.joblib`.
-  Exception: the merge inputs `data/premerge_cleaned_dataset/` and
-  `data/cleaned_v2/` are tracked, because no code in the repo can recreate them
-  yet (roadmap 1b). `.gitignore` re-includes only those. `data/harmonized/` is
-  rebuilt by `python -m salary_intel.build_harmonized` and is not tracked.
+  Exception: the merge input `data/premerge_cleaned_dataset/` is tracked,
+  because no code in the repo can recreate it yet (roadmap 1b). `.gitignore`
+  re-includes only that. `data/harmonized/` (`python -m salary_intel.build_harmonized`)
+  and `data/cleaned_v2/` (`python -m salary_intel.build_cleaned_v2`) are rebuilt
+  by code and not tracked.
 - Load it with `pd.read_csv(path, keep_default_na=False, na_values=[""])` so real
   answers like "None"/"NA" stay as text.
 - Raw survey: 803,388 responses; cleaning removed students/unemployed/hobbyists
@@ -56,8 +57,12 @@ on my resume and talk about in interviews.
     - [done] 2017-2021: src/salary_intel/build_harmonized.py (clean_survey ->
       data/clean/{year}_basic.csv -> harmonize -> data/harmonized/) reproduces
       the old tracked files byte for byte; data/harmonized/ is now untracked.
-    - Rebuild the script that writes data/cleaned_v2/survey_20XX_v2.csv for
-      2022-2026 (probably using clean_survey.py).
+    - [done] 2022-2026: src/salary_intel/build_cleaned_v2.py (clean_survey ->
+      data/clean/survey_{year}_cleaned.csv -> keep/rename table -> data/cleaned_v2/)
+      reproduces the old tracked files byte for byte; data/cleaned_v2/ is now
+      untracked. It keeps the old step's spreadsheet deviations on purpose
+      (2023 AIAcc/AIBen swap, 11 unrenamed 2026 columns; marked "# sheet:").
+      Fixing them is a later change, because it changes the merged data.
     Each is done when its output matches the tracked files exactly. Once a
     folder can be fully recreated by code, it can be untracked.
 2. LightGBM (`train_trees.py`) on the same splits and metrics; CatBoost as a

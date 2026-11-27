@@ -39,7 +39,9 @@ data/<year>/results.csv  (raw, downloaded)
   ├─ 2017-2021  python -m salary_intel.build_harmonized
   │                 clean_survey ──> data/clean/{year}_basic.csv
   │                 harmonize    ──> data/harmonized/{year}_droppedcols.csv
-  └─ 2022-2026  (missing step) ──> data/cleaned_v2/survey_20XX_v2.csv  [committed]
+  └─ 2022-2026  python -m salary_intel.build_cleaned_v2
+                    clean_survey      ──> data/clean/survey_{year}_cleaned.csv
+                    keep + rename     ──> data/cleaned_v2/survey_{year}_v2.csv
                          │
         notebooks/combinemerge ──> combined/all_years.csv
         notebooks/MASTERcleanfixMergedData_v2 ──> combined/all_years_fixed.csv
@@ -50,18 +52,27 @@ data/<year>/results.csv  (raw, downloaded)
 
 ### Committed inputs
 
-These two folders are tracked in git. They were produced outside this repo, and
-no code here can recreate them yet:
+One folder is still tracked in git. It was produced outside this repo, and no
+code here can recreate it yet:
 
 | Folder | Years | Missing step that produces it |
 |---|---|---|
 | `data/premerge_cleaned_dataset/` | 2011-2016 | `canonical_20XX.csv` → `final_canonical_20XX.csv` |
-| `data/cleaned_v2/` | 2022-2026 | the script that writes `survey_20XX_v2.csv` |
 
-Rebuilding these steps is on the roadmap. Once a folder can be recreated by code,
-it gets untracked. `data/harmonized/` (2017-2021) already went through this:
-`python -m salary_intel.build_harmonized` rebuilds it from the raw files, byte
-for byte identical to the files the team originally committed.
+Rebuilding it is on the roadmap. Once a folder can be recreated by code, it gets
+untracked. The other two merge inputs already went through this. Each rebuilds
+from the raw files byte for byte identical to the files the team originally committed:
+
+| Folder | Years | Rebuilt by |
+|---|---|---|
+| `data/harmonized/` | 2017-2021 | `python -m salary_intel.build_harmonized` |
+| `data/cleaned_v2/` | 2022-2026 | `python -m salary_intel.build_cleaned_v2` |
+
+`build_cleaned_v2` reproduces the old step exactly, including places where it
+disagrees with the schema spreadsheet. In 2023, `AIAcc`/`AIBen` are swapped
+compared with 2024 (Stack Overflow swapped the raw names that year). In 2026,
+11 columns keep their raw names (e.g. `Education`, `LanguagesHaveWorkedWith`)
+instead of the canonical ones. Each rule is marked `# sheet:` in the module.
 
 ## Pipeline
 
@@ -94,11 +105,12 @@ src/salary_intel/   Python package
   salary_pipeline.py   preprocessing (Phases 3, 5, 6) as one SalaryPreprocessor object
   train_final.py       --check reproduces Run A; default trains the demo model
   build_harmonized.py  rebuilds data/harmonized/ (2017-2021) from the raw files
+  build_cleaned_v2.py  rebuilds data/cleaned_v2/ (2022-2026) from the raw files
   clean_survey.py, harmonize.py, explore_survey.py, download_data.py
 app/                Flask web demo (see app/README.md)
 notebooks/          modeling, merge and EDA notebooks; cleaning/ = per-year cleaning + EDA
 docs/               schema mapping spreadsheet
-data/               raw downloads and rebuilt files (ignored) + the two committed inputs
+data/               raw downloads and rebuilt files (ignored) + the one committed input
 archive/            superseded notebooks (plus ignored old CSV outputs on disk)
 ```
 

@@ -7,16 +7,50 @@ Extends a team project from UC Davis ECS 171 (Fall 2026), which I led.
 
 ## Results
 
-The model is an elastic net on log salary (alpha ≈ 0.00139, l1_ratio 0.95,
-rescaled per Zou & Hastie 2005), scored on held-out test data:
+Two splits:
+- **Run A** (time-based) trains on 2011-2024, validates on 2025 and tests on 2026.
+  This is the honest number for "predict a new year's salaries".
+- **Run B** (random 70/15/15, stratified by year) is easier, because the test years
+  were also seen in training.
 
-| Split | Train / validate / test | Test R² | Median abs. error | RMSE (log) |
+Every model uses the same rows, the same metrics, and settings chosen on
+validation only, then frozen before the test set was scored once
+(`src/salary_intel/evaluate.py`, `train_trees.py`).
+
+**Test results, Run A (2026):**
+
+| Model | RMSE (log) | R² | Median $ error | Mean error (log) |
 |---|---|---|---|---|
-| **Run A** (time-based) | 2011-2024 / 2025 / 2026 | 0.42 | ~$28.6k | 0.782 |
-| **Run B** (random 70/15/15, stratified by year) | mixed years | 0.61 | ~$14.1k | n/a |
+| Elastic net | 0.782 | 0.42 | $28.6k | −0.35 |
+| LightGBM, plain | 0.693 | 0.54 | $21.0k | −0.13 |
+| LightGBM, detrended | **0.683** | **0.56** | **$20.6k** | +0.06 |
 
-Run A is the honest number for "predict a new year's salaries". Run B is easier:
-the test years were also seen in training.
+**Test results, Run B:**
+
+| Model | RMSE (log) | R² | Median $ error | Mean error (log) |
+|---|---|---|---|---|
+| Elastic net | 0.654 | 0.61 | $14.1k | −0.01 |
+| LightGBM, plain | 0.621 | 0.65 | $13.2k | −0.00 |
+| LightGBM, detrended | 0.621 | 0.65 | $13.2k | −0.00 |
+
+- **Models:**
+  - The elastic net is rescaled per Zou & Hastie 2005: alpha ≈ 0.00139, l1_ratio 0.95
+    for Run A; alpha ≈ 0.00072, l1_ratio 0.99 for Run B.
+  - LightGBM was tuned with 60 random-search trials per variant, with early stopping
+    on validation.
+  - The *detrended* variant fits a straight line of log salary vs year on the training
+    rows, and LightGBM learns what the line misses. Trees can't extrapolate a year they
+    haven't seen, and the line carries wage growth into 2026.
+- **Mean error** is the average of predicted minus actual log salary. Negative means the
+  model guesses too low on average. On the 2026 test, the elastic net is about 30% too
+  low, plain LightGBM about 12% too low, and the detrended version about 6% too high.
+  In Run B the two LightGBM variants are identical, because there's no future year to
+  extrapolate to.
+- **The two LightGBM variants tie on validation** (2025: 0.6507 vs 0.6508). The detrended
+  one's edge shows only on 2026, so the choice between them shouldn't be read as tuned
+  on test.
+- **Grid edge:** LightGBM's chosen `min_child_samples` (800) is the largest value
+  searched for Run A. Extending the grid once moved validation RMSE by only about 0.001.
 
 ## Data
 
@@ -105,6 +139,9 @@ web demo.
 ```
 src/salary_intel/   Python package
   salary_pipeline.py   preprocessing (Phases 3, 5, 6) as one SalaryPreprocessor object
+  evaluate.py          shared splits, metrics and the elastic-net reference
+  tree_features.py     features for tree models (TreePreprocessor)
+  train_trees.py       LightGBM: --tune on validation, --test with frozen settings
   train_final.py       --check reproduces Run A; default trains the demo model
   build_premerge.py    rebuilds data/premerge_cleaned_dataset/ (2011-2016) from the raw files
   build_harmonized.py  rebuilds data/harmonized/ (2017-2021) from the raw files
@@ -124,7 +161,13 @@ pip install -e .                               # installs salary_intel and its d
 python -m salary_intel.train_final --check     # 522 columns, Run A validation RMSE 0.6783
 python -m salary_intel.train_final             # trains on all years -> results/final_model.joblib
 python app/app.py                              # web demo at http://127.0.0.1:5000
+
+python -m salary_intel.evaluate                # elastic-net reference, reproduces the notebooks' test RMSE
+python -m salary_intel.train_trees --run A --tune [--append]   # LightGBM search, validation only (~15-30 min)
+python -m salary_intel.train_trees --run A --test              # frozen settings -> results/model_comparison_A.csv
 ```
+
+The web demo still uses the elastic net.
 
 You need `combined/all_years_fixed.csv` first (see Data flow). Notebooks can be
 opened from any folder: their first cell changes to the repo root.

@@ -40,10 +40,17 @@ on my resume and talk about in interviews.
 - Everything that learns is fit on training data only (no leakage).
 - Splits: Run A (time-based) train 2011-2024, validate 2025, test 2026.
   Run B (random 70/15/15, stratified by year, random_state=42).
-- Current best model: elastic net (alpha ~0.00139, l1_ratio 0.95, rescaled per
-  Zou & Hastie 2005).
-- Test results: Run A R^2 0.42, median error ~$28.6k, RMSE 0.782 (log).
-  Run B R^2 0.61, median error ~$14.1k.
+- Elastic net (alpha ~0.00139, l1_ratio 0.95, rescaled per Zou & Hastie 2005):
+  Run A test R^2 0.42, median error ~$28.6k, RMSE 0.782 (log), mean error -0.35;
+  Run B R^2 0.61, median error ~$14.1k. Reference: `python -m salary_intel.evaluate`.
+- Best so far: LightGBM (`src/salary_intel/train_trees.py`), frozen settings in
+  `results/lgbm_params_{A,B}.json`:
+  Run A test (detrended) R^2 0.56, median error ~$20.6k, RMSE 0.683, mean error +0.06
+  (plain: R^2 0.54, ~$21.0k, RMSE 0.693, mean error -0.13).
+  Run B R^2 0.65, median error ~$13.2k, RMSE 0.621 (variants identical).
+  The variants tie on 2025 validation; the web demo still uses the elastic net.
+- Tree features drop the `YearsCodePro_imputed` flag: it is a pure era marker
+  (1 for 2011-2016 and 2025-2026, ~0 otherwise).
 
 ## Roadmap (do in this order)
 1. Restructure repo (src/, app/, notebooks/, archive/), stop tracking CSVs,
@@ -70,6 +77,8 @@ on my resume and talk about in interviews.
     folder can be fully recreated by code, it can be untracked.
 2. LightGBM (`train_trees.py`) on the same splits and metrics; CatBoost as a
    comparison. Compare against elastic net fairly.
+   [LightGBM done: plain + detrended variants, both beat the elastic net on
+   both runs. Next: CatBoost reusing evaluate.py and tree_features.py.]
 3. SHAP explanations (global importance + per-prediction).
 4. Prediction intervals: quantile regression and/or conformal prediction;
    check coverage on 2026.

@@ -30,7 +30,7 @@ Corrections to the spreadsheet already applied:
   - 2018 SalaryType -> CompFreq (pay period, not the salary)
  
 Usage (after clean_survey):
-    from harmonize import harmonize
+    from salary_intel.harmonize import harmonize
     h17 = harmonize(clean17, 2017)
 """
  

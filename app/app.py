@@ -1,7 +1,7 @@
 """
 Phase 10, step 2: the web demo (input -> model -> output).
 
-    python app.py          then open http://127.0.0.1:5000
+    python app/app.py      (from the repo root) then open http://127.0.0.1:5000
 
 The page sends the form as JSON to /predict.  The server builds a one-row
 table that looks like a 2026 survey answer, runs it through the SAME fitted
@@ -14,11 +14,14 @@ import joblib
 from scipy import sparse
 from flask import Flask, jsonify, render_template, request
 
-from salary_pipeline import (CAT_COLS, GROUP_LABELS, FEATURES, LIST_COLS,
-                             feature_group, label_blanks)
-
 from pathlib import Path
-B = joblib.load(Path(__file__).resolve().parent / "results" / "final_model.joblib")
+
+from salary_intel.salary_pipeline import (CAT_COLS, GROUP_LABELS, FEATURES, LIST_COLS,
+                                          feature_group, label_blanks)
+
+# This file is <repo>/app/app.py, so parents[1] is <repo>; train_final.py saves there.
+ROOT = Path(__file__).resolve().parents[1]
+B = joblib.load(ROOT / "results" / "final_model.joblib")
 PRE, COEF, B0, XBAR = B["pre"], B["coef"], B["b0"], B["xbar"]
 GROUPS = np.array([feature_group(n) for n in B["names"]])
 Z50 = 0.6745                        # half of a normal curve lies within +-0.6745 sd

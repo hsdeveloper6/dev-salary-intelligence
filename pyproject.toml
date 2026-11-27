@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "salary-intel"
+version = "0.1.0"
+description = "Predicting developer salaries from 16 years of Stack Overflow Developer Survey data"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas",
+    "numpy",
+    "scikit-learn",
+    "scipy",
+    "joblib",
+    "flask",
+    "matplotlib",
+]
+
+# "src layout": the importable package lives in src/salary_intel/
+[tool.setuptools.packages.find]
+where = ["src"]

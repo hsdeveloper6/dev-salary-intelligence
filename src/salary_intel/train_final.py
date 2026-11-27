@@ -1,8 +1,10 @@
 """
 Phase 10, step 1: build results/final_model.joblib for the web demo.
 
-    python train_final.py --check   # optional: reproduce Run A first (~minutes)
-    python train_final.py           # refit on ALL years and save the model
+Run from the repo root (after `pip install -e .`):
+
+    python -m salary_intel.train_final --check   # reproduce Run A first (~30 s)
+    python -m salary_intel.train_final           # refit on ALL years and save the model
 
 --check fits the shared preprocessor on 2011-2024, trains the chosen elastic
 net, and scores 2025.  If it prints about the same column count and
@@ -18,15 +20,13 @@ import numpy as np
 from scipy import sparse
 from sklearn.linear_model import ElasticNet
 
-from salary_pipeline import (CAT_COLS, LIST_COLS, SalaryPreprocessor, load_csv,
-                             phase3, rescale)
+from salary_intel.salary_pipeline import (CAT_COLS, LIST_COLS, SalaryPreprocessor,
+                                          load_csv, phase3, rescale)
 
-HERE = Path(__file__).resolve().parent
-# Works whether these files sit at the repo root or in a subfolder (e.g. phase10_frontend/)
-CSV = next((p for p in [HERE / "combined/all_years_fixed.csv",
-                        HERE.parent / "combined/all_years_fixed.csv"] if p.exists()),
-           HERE.parent / "combined/all_years_fixed.csv")
-RESULTS = HERE / "results"
+# This file is <repo>/src/salary_intel/train_final.py, so parents[2] is <repo>.
+ROOT = Path(__file__).resolve().parents[2]
+CSV = ROOT / "combined" / "all_years_fixed.csv"
+RESULTS = ROOT / "results"
 # Run A's frozen enet_rescaled choice (Phase 7 -> phase9.ipynb): alpha = 0.00139, l1_ratio = 0.95.
 # 0.00139 is grid point np.logspace(0, -4, 15)[10]; use the exact value.
 A_ALPHA, A_L1 = float(np.logspace(0, -4, 15)[10]), 0.95

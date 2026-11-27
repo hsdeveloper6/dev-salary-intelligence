@@ -2,15 +2,14 @@
 *.csv
 vocab_*.csv
 
-# data/ holds raw downloads (ignored) plus three merge inputs that no code in
-# this repo can recreate yet, so they stay tracked (see README, roadmap 1b).
+# data/ holds raw downloads and rebuilt files (ignored) plus merge inputs that
+# no code in this repo can recreate yet, so they stay tracked (see README,
+# roadmap 1b). data/harmonized/ is rebuilt by salary_intel.build_harmonized.
 # Git can't re-include a file whose parent folder is ignored, so ignore the
-# folder's contents (data/*) and re-include the three folders, then their CSVs.
+# folder's contents (data/*) and re-include the kept folders, then their CSVs.
 data/*
-!data/harmonized/
 !data/premerge_cleaned_dataset/
 !data/cleaned_v2/
-!data/harmonized/*.csv
 !data/premerge_cleaned_dataset/*.csv
 !data/cleaned_v2/*.csv
 

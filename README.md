@@ -36,8 +36,9 @@ the test years were also seen in training.
 data/<year>/results.csv  (raw, downloaded)
   ├─ 2011-2016  notebooks/cleaning/clean_20XX_canonical ──> canonical_20XX.csv
   │                 ──(missing step)──> data/premerge_cleaned_dataset/final_canonical_20XX.csv  [committed]
-  ├─ 2017-2021  (missing step) ──> data/clean/{year}_basic.csv
-  │                 ──notebooks/dropcols──> data/harmonized/{year}_droppedcols.csv  [committed]
+  ├─ 2017-2021  python -m salary_intel.build_harmonized
+  │                 clean_survey ──> data/clean/{year}_basic.csv
+  │                 harmonize    ──> data/harmonized/{year}_droppedcols.csv
   └─ 2022-2026  (missing step) ──> data/cleaned_v2/survey_20XX_v2.csv  [committed]
                          │
         notebooks/combinemerge ──> combined/all_years.csv
@@ -49,17 +50,18 @@ data/<year>/results.csv  (raw, downloaded)
 
 ### Committed inputs
 
-These three folders are tracked in git. They were produced outside this repo,
-and no code here can recreate them yet:
+These two folders are tracked in git. They were produced outside this repo, and
+no code here can recreate them yet:
 
 | Folder | Years | Missing step that produces it |
 |---|---|---|
 | `data/premerge_cleaned_dataset/` | 2011-2016 | `canonical_20XX.csv` → `final_canonical_20XX.csv` |
-| `data/harmonized/` | 2017-2021 | the script that writes `data/clean/{year}_basic.csv`, which `dropcols.ipynb` reads |
 | `data/cleaned_v2/` | 2022-2026 | the script that writes `survey_20XX_v2.csv` |
 
-Rebuilding these steps is next on the roadmap. Once a folder can be recreated by
-code, it will be untracked.
+Rebuilding these steps is on the roadmap. Once a folder can be recreated by code,
+it gets untracked. `data/harmonized/` (2017-2021) already went through this:
+`python -m salary_intel.build_harmonized` rebuilds it from the raw files, byte
+for byte identical to the files the team originally committed.
 
 ## Pipeline
 
@@ -91,11 +93,12 @@ web demo.
 src/salary_intel/   Python package
   salary_pipeline.py   preprocessing (Phases 3, 5, 6) as one SalaryPreprocessor object
   train_final.py       --check reproduces Run A; default trains the demo model
+  build_harmonized.py  rebuilds data/harmonized/ (2017-2021) from the raw files
   clean_survey.py, harmonize.py, explore_survey.py, download_data.py
 app/                Flask web demo (see app/README.md)
 notebooks/          modeling, merge and EDA notebooks; cleaning/ = per-year cleaning + EDA
 docs/               schema mapping spreadsheet
-data/               raw downloads (ignored) + the three committed inputs
+data/               raw downloads and rebuilt files (ignored) + the two committed inputs
 archive/            superseded notebooks (plus ignored old CSV outputs on disk)
 ```
 

@@ -103,7 +103,9 @@ class CATBOOST:
 
     @classmethod
     def fit(cls, params, F_tr, t_tr, F_va=None, t_va=None, n_trees=MAX_TREES):
-        cats = [c for c in F_tr.columns if F_tr[c].dtype == object]
+        # The text columns made by prepare(). Check "not numeric" rather than
+        # dtype == object: in pandas 3, astype(str) gives the new "str" dtype.
+        cats = [c for c in F_tr.columns if not pd.api.types.is_numeric_dtype(F_tr[c])]
         m = catboost.CatBoostRegressor(**cls.FIXED, **params, iterations=n_trees,
                                        cat_features=cats)
         if F_va is None:

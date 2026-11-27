@@ -37,11 +37,14 @@ VARIANTS = ["plain", "detrended"]
 
 FIXED = dict(objective="regression", learning_rate=0.05, bagging_freq=1, seed=42,
              deterministic=True, force_col_wise=True, num_threads=8, verbose=-1)
-SPACE = dict(num_leaves=[31, 63, 127, 255],
-             min_child_samples=[20, 50, 100, 200],
+# The first search (seed 42) used num_leaves up to 255, min_child_samples up to 200
+# and lambda_l2 up to 10. Its best settings sat at those upper edges, so the grid
+# was extended, and a second search (--append, seed 43) added trials on top.
+SPACE = dict(num_leaves=[31, 63, 127, 255, 511, 1023],
+             min_child_samples=[20, 50, 100, 200, 400, 800],
              feature_fraction=[0.5, 0.7, 0.9],
              bagging_fraction=[0.7, 0.9, 1.0],
-             lambda_l2=[0.0, 1.0, 10.0])
+             lambda_l2=[0.0, 1.0, 10.0, 30.0, 100.0])
 MAX_TREES, EARLY_STOP = 5000, 100
 
 
@@ -80,11 +83,18 @@ def fit_lgbm(params, F_tr, target_tr, F_va=None, target_va=None, n_trees=MAX_TRE
     return lgb.train({**FIXED, **params}, train, num_boost_round=n_trees, **kw)
 
 
-def tune(run, trials):
+def tune(run, trials, append=False):
+    """Random search on validation. With append=True, keep the earlier trials in
+    results/lgbm_trials_{run}.csv, draw new ones with seed 43, and pick the best
+    across all of them (every trial is scored on the same validation rows)."""
     d = load_run(run)
     (F_tr, F_va, _), (y_tr, y_va, _) = d["F"], d["y"]
     trend = YearTrend().fit(F_tr["survey_year"], y_tr)
-    rng = np.random.default_rng(42)
+    trials_path = RESULTS / f"lgbm_trials_{run}.csv"
+    if append and not trials_path.exists():
+        raise SystemExit(f"--append needs {trials_path} from an earlier --tune")
+    previous = pd.read_csv(trials_path) if append else None
+    rng = np.random.default_rng(43 if append else 42)
     draws = [{k: v[rng.integers(len(v))] for k, v in SPACE.items()} for _ in range(trials)]
     draws = [{k: (float(v) if isinstance(v, float) else int(v)) for k, v in p.items()} for p in draws]
 
@@ -96,15 +106,20 @@ def tune(run, trials):
             m = fit_lgbm(params, F_tr, y_tr - off_tr, F_va, y_va - off_va)
             pred = m.predict(F_va, num_iteration=m.best_iteration) + off_va
             v = metrics(y_va, pred)
-            rows.append(dict(variant=variant, trial=i, **params, n_trees=m.best_iteration,
+            rows.append(dict(variant=variant, search=2 if append else 1, trial=i, **params,
+                             n_trees=m.best_iteration,
                              val_rmse=v["rmse_log"], val_mean_err=v["mean_err_log"],
                              seconds=round(time.time() - t0, 1)))
             print(f"[{run} {variant} {i + 1}/{trials}] val RMSE {v['rmse_log']:.4f} "
                   f"trees {m.best_iteration} ({rows[-1]['seconds']}s) {params}", flush=True)
 
     hist = pd.DataFrame(rows)
+    if previous is not None:
+        if "search" not in previous:
+            previous.insert(1, "search", 1)
+        hist = pd.concat([previous, hist], ignore_index=True)
     RESULTS.mkdir(exist_ok=True)
-    hist.to_csv(RESULTS / f"lgbm_trials_{run}.csv", index=False)
+    hist.to_csv(trials_path, index=False)
     frozen = {"run": run, "trend": {"intercept": float(trend.lr.intercept_),
                                     "slope_per_year": float(trend.lr.coef_[0])},
               "fixed": FIXED, "variants": {}}
@@ -155,8 +170,10 @@ def main():
     mode.add_argument("--tune", action="store_true")
     mode.add_argument("--test", action="store_true")
     ap.add_argument("--trials", type=int, default=30)
+    ap.add_argument("--append", action="store_true",
+                    help="with --tune: add new trials to the existing ones (seed 43)")
     args = ap.parse_args()
-    tune(args.run, args.trials) if args.tune else test(args.run)
+    tune(args.run, args.trials, args.append) if args.tune else test(args.run)
 
 
 if __name__ == "__main__":

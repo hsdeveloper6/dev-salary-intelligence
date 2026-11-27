@@ -15,6 +15,10 @@ dependencies = [
     "joblib",
     "flask",
     "matplotlib",
+    # build_premerge runs the 2011-2016 cleaning notebooks
+    "nbclient",
+    "nbformat",
+    "ipykernel",
 ]
 
 # "src layout": the importable package lives in src/salary_intel/

@@ -34,8 +34,9 @@ the test years were also seen in training.
 
 ```
 data/<year>/results.csv  (raw, downloaded)
-  ├─ 2011-2016  notebooks/cleaning/clean_20XX_canonical ──> canonical_20XX.csv
-  │                 ──(missing step)──> data/premerge_cleaned_dataset/final_canonical_20XX.csv  [committed]
+  ├─ 2011-2016  python -m salary_intel.build_premerge
+  │                 notebooks/cleaning/clean_20XX_canonical ──> data/clean/canonical_20XX.csv
+  │                 keep + rename ──> data/premerge_cleaned_dataset/final_canonical_20XX.csv
   ├─ 2017-2021  python -m salary_intel.build_harmonized
   │                 clean_survey ──> data/clean/{year}_basic.csv
   │                 harmonize    ──> data/harmonized/{year}_droppedcols.csv
@@ -50,23 +51,24 @@ data/<year>/results.csv  (raw, downloaded)
         phase8, phase9  ──>  src/salary_intel/salary_pipeline.py + train_final.py
 ```
 
-### Committed inputs
+### Rebuilding the merge inputs
 
-One folder is still tracked in git. It was produced outside this repo, and no
-code here can recreate it yet:
+No data is tracked in git. The three merge inputs that `combinemerge.ipynb`
+reads are rebuilt from the raw survey files, each one byte for byte identical
+to the files the team originally committed:
 
-| Folder | Years | Missing step that produces it |
-|---|---|---|
-| `data/premerge_cleaned_dataset/` | 2011-2016 | `canonical_20XX.csv` → `final_canonical_20XX.csv` |
+```bash
+python -m salary_intel.download_data       # raw files -> data/<year>/
+python -m salary_intel.build_premerge      # 2011-2016 -> data/premerge_cleaned_dataset/  (~1 min)
+python -m salary_intel.build_harmonized    # 2017-2021 -> data/harmonized/
+python -m salary_intel.build_cleaned_v2    # 2022-2026 -> data/cleaned_v2/
+```
 
-Rebuilding it is on the roadmap. Once a folder can be recreated by code, it gets
-untracked. The other two merge inputs already went through this. Each rebuilds
-from the raw files byte for byte identical to the files the team originally committed:
+Then run `notebooks/combinemerge.ipynb` and
+`notebooks/MASTERcleanfixMergedData_v2.ipynb` to make `combined/all_years_fixed.csv`.
 
-| Folder | Years | Rebuilt by |
-|---|---|---|
-| `data/harmonized/` | 2017-2021 | `python -m salary_intel.build_harmonized` |
-| `data/cleaned_v2/` | 2022-2026 | `python -m salary_intel.build_cleaned_v2` |
+`build_premerge` runs the 2011-2016 cleaning notebooks in order, in a temporary
+folder: later notebooks read alias tables that earlier ones write.
 
 `build_cleaned_v2` reproduces the old step exactly, including places where it
 disagrees with the schema spreadsheet. In 2023, `AIAcc`/`AIBen` are swapped
@@ -104,13 +106,14 @@ web demo.
 src/salary_intel/   Python package
   salary_pipeline.py   preprocessing (Phases 3, 5, 6) as one SalaryPreprocessor object
   train_final.py       --check reproduces Run A; default trains the demo model
+  build_premerge.py    rebuilds data/premerge_cleaned_dataset/ (2011-2016) from the raw files
   build_harmonized.py  rebuilds data/harmonized/ (2017-2021) from the raw files
   build_cleaned_v2.py  rebuilds data/cleaned_v2/ (2022-2026) from the raw files
   clean_survey.py, harmonize.py, explore_survey.py, download_data.py
 app/                Flask web demo (see app/README.md)
 notebooks/          modeling, merge and EDA notebooks; cleaning/ = per-year cleaning + EDA
 docs/               schema mapping spreadsheet
-data/               raw downloads and rebuilt files (ignored) + the one committed input
+data/               raw downloads and everything rebuilt from them (ignored)
 archive/            superseded notebooks (plus ignored old CSV outputs on disk)
 ```
 

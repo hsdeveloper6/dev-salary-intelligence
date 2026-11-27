@@ -12,20 +12,23 @@ on my resume and talk about in interviews.
 - Work in small steps. Plan big changes before making them.
 - I need to understand every line I keep (interviewers will ask), so explain
   non-obvious code and point out trade-offs.
-- After any change to the pipeline, run
-  `cd phase10_frontend && python train_final.py --check` and confirm it still
-  gives 522 columns and validation RMSE ~0.6783.
+- After any change to the pipeline, run (from the repo root)
+  `python -m salary_intel.train_final --check` and confirm it still gives 522
+  columns and validation RMSE ~0.6783. (Needs `pip install -e .` once.)
 - Commit after each working step with a clear message.
 
 ## Data
 - The modeling dataset is `combined/all_years_fixed.csv` (386,701 rows). It is
   on my machine only, NOT in git. Never commit data files or `results/*.joblib`.
+  Exception: the three merge inputs `data/premerge_cleaned_dataset/`,
+  `data/harmonized/` and `data/cleaned_v2/` are tracked, because no code in the
+  repo can recreate them yet (roadmap 1b). `.gitignore` re-includes only those.
 - Load it with `pd.read_csv(path, keep_default_na=False, na_values=[""])` so real
   answers like "None"/"NA" stay as text.
 - Raw survey: 803,388 responses; cleaning removed students/unemployed/hobbyists
   and salaries outside $1,000-$1,000,000.
 
-## Current pipeline (phase10_frontend/salary_pipeline.py is the clean version)
+## Current pipeline (src/salary_intel/salary_pipeline.py is the clean version)
 - Target: `y = log(Comp_USD_Annual)`.
 - 19 input features; categories use "Not asked" (question absent that year) or
   "No answer" (skipped).
@@ -46,6 +49,15 @@ on my resume and talk about in interviews.
 1. Restructure repo (src/, app/, notebooks/, archive/), stop tracking CSVs,
    write README with credit line: "Extends a team project from UC Davis ECS 171
    (Fall 2026), which I led."
+1b. Make the merge inputs reproducible (after the restructure):
+    - Rebuild the canonical -> final_canonical step for 2011-2016 using
+      docs/SO_Survey_Schema_Harmonization_2011-2026.xlsx.
+    - Rebuild the script that writes data/clean/{year}_basic.csv for 2017-2021
+      (probably using clean_survey.py).
+    - Rebuild the script that writes data/cleaned_v2/survey_20XX_v2.csv for
+      2022-2026 (probably using clean_survey.py).
+    Each is done when its output matches the tracked files exactly. Once a
+    folder can be fully recreated by code, it can be untracked.
 2. LightGBM (`train_trees.py`) on the same splits and metrics; CatBoost as a
    comparison. Compare against elastic net fairly.
 3. SHAP explanations (global importance + per-prediction).

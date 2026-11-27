@@ -16,6 +16,13 @@ steps that only a linear model needs (see CLAUDE.md, "Traps for tree models"):
   left   no squared terms, no scaling, no log10(OrgSize): a tree only asks
   out    "is x above some cut-off?", so a curve or a rescaling changes nothing.
          Other blank numbers stay NaN, because LightGBM handles missing values itself.
+  drop   the YearsCodePro_imputed flag. It is 1 for every 2011-2016 and
+         2025-2026 row and ~0 for 2017-2024, so it only says "which survey era".
+         In Run A it is 1 for all of validation and test, which would invite a
+         tree to treat 2025-2026 like 2011-2016. Measured effect on 2025
+         validation was within noise (about +/-0.001 RMSE), but the flag adds no
+         information except the era, so it goes. Age_imputed stays: it is ~0 in
+         2025-2026, so it isn't an era marker there.
 """
 import re
 
@@ -47,7 +54,7 @@ class TreePreprocessor:
 
     def _phase5(self, X):
         out = impute_ycp(impute_age(X, self.age_pools, self._rng), self.ycp_models)
-        return out.drop(columns="WorkExp")
+        return out.drop(columns=["WorkExp", "YearsCodePro_imputed"])
 
     def _encode(self, d, list_columns=None):
         for c in CAT_COLS:

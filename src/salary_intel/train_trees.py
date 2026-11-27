@@ -79,8 +79,12 @@ class LGBM:
 
 
 class CATBOOST:
+    """CatBoost is 10-20x slower than LightGBM on this data (5-10 min per fit on
+    8 CPU cores), so it gets a smaller search: --trials 8 per variant, with a
+    higher learning rate (0.15) so early stopping is reached in fewer trees.
+    Its result is less tuned than LightGBM's (60 trials per variant)."""
     name = "catboost"
-    FIXED = dict(loss_function="RMSE", learning_rate=0.08, random_seed=42,
+    FIXED = dict(loss_function="RMSE", learning_rate=0.15, random_seed=42,
                  thread_count=8, verbose=0, allow_writing_files=False)
     SPACE = dict(depth=[4, 6, 8, 10],
                  l2_leaf_reg=[1.0, 3.0, 10.0, 30.0],

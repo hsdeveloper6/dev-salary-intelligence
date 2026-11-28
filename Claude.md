@@ -85,6 +85,10 @@ on my resume and talk about in interviews.
    [done: LightGBM and CatBoost, plain + detrended variants, all beat the
    elastic net on both runs; LightGBM is best.]
 3. SHAP explanations (global importance + per-prediction).
+   [done: src/salary_intel/explain.py on LightGBM detrended, Run A test. Country
+   dominates (mean |SHAP| 0.48), then YearsCodePro (0.18), OrgSize (0.08); CatBoost
+   agrees (Spearman 0.94). Found `OpSys_Not asked` = era marker (OS not asked in
+   2017 + 2026), -0.08 on every 2026 prediction; fix = retrain, not done yet.]
 4. Prediction intervals: quantile regression and/or conformal prediction;
    check coverage on 2026.
 5. Drift analysis: train up to year N, test on N+1, plot error by year.
@@ -103,4 +107,5 @@ on my resume and talk about in interviews.
 ## Known limitations
 Nominal (not inflation-adjusted) salaries; salary bands 2011-2014; survey not a
 random sample; ~11% of 2026 Industry answers unseen in training; language count
-overlaps the language 0/1 columns.
+overlaps the language 0/1 columns; OpSys "Not asked" only in 2017 and 2026 (era
+marker for trees).

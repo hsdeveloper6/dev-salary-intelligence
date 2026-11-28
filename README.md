@@ -65,6 +65,59 @@ validation only, then frozen before the test set was scored once
   CatBoost's Run A detrended pick uses depth 10, the deepest searched; depth 12 would
   make each tree about 4x slower.
 
+## What drives the predictions (SHAP)
+
+`python -m salary_intel.explain` explains the best model (LightGBM, detrended, Run A) on the
+12,157 people in the 2026 test set. SHAP splits every prediction into one contribution per
+input, and the contributions add up exactly to the prediction:
+
+    predicted log salary = year line + base value + sum of the contributions
+
+The target is log salary, so a contribution of +0.69 doubles the predicted salary, and −0.69
+halves it.
+
+![Mean |SHAP| per input](docs/figures/importance_grouped.png)
+
+- **Country dominates:** its average contribution is 0.48 log units, about ×1.6 either way.
+  Next come years of professional coding (0.18) and company size (0.08).
+- **Country effects on the 2026 test set, compared with the average person:**
+  - the US and Switzerland about ×2.0, Australia ×1.5, the UK and Canada ×1.4, Germany ×1.2;
+  - India ×0.35, Ukraine ×0.40, Brazil ×0.46.
+
+  ![Country effects](docs/figures/effect_Country.png)
+- **Experience pays off quickly, then flattens.** Going from 0 to about 10 years of professional
+  coding raises the prediction by about 0.7 log units (×2). After about 12 years the curve is
+  nearly flat.
+
+  ![Years coding professionally](docs/figures/effect_YearsCodePro.png)
+- **One person's prediction:** the waterfall below is the respondent whose prediction is the
+  median, chosen by that rule rather than hand-picked. It starts at the average training salary,
+  adds the year line (+0.28, wage growth up to 2026), then each input.
+
+  ![One prediction explained](docs/figures/waterfall_p50.png)
+- **Single columns:** the beeswarm shows the top 20 columns before grouping. Each dot is one
+  person: [docs/figures/beeswarm_columns.png](docs/figures/beeswarm_columns.png).
+- **Stability:**
+  - The ranking of the 18 inputs is similar on a 10,000-row training sample (Spearman 0.85).
+  - CatBoost relies on almost the same inputs (Spearman 0.94). It has the same top 2, and then
+    survey year and company size, nearly tied.
+- **A leak found by SHAP:** the 4th most important single column is `OpSys_Not asked`. The
+  operating-system question was left out only in 2017 and 2026. So the model learned "not asked"
+  from 2017 respondents, and it lowers every 2026 prediction by about 8% (−0.08). Like the
+  `YearsCodePro_imputed` flag that was dropped earlier, it's a marker of survey era, not of
+  salary. The trees' own `survey_year` adds another −0.07 on 2026, because trees treat 2026 like
+  2024. These two partly offset the year line, so the step 2 test numbers include them. Fixing
+  the OS column means retraining, and is left for later.
+- **Caveat:** SHAP shows what the model relies on, not what causes higher pay. Related inputs
+  share credit: Age, years coding and professional years move together, and so do country and
+  remote work.
+
+Values come from `shap.TreeExplainer`, which uses LightGBM's own exact TreeSHAP. The script
+checks that:
+- the saved model reproduces the test RMSE;
+- the contributions add up to every prediction;
+- grouping the 0/1 columns into their questions keeps every total.
+
 ## Data
 
 - **Source:** the official survey files (`python -m salary_intel.download_data`
@@ -155,6 +208,7 @@ src/salary_intel/   Python package
   evaluate.py          shared splits, metrics and the elastic-net reference
   tree_features.py     features for tree models (TreePreprocessor)
   train_trees.py       LightGBM / CatBoost: --tune on validation, --test with frozen settings
+  explain.py           SHAP explanations of the best model -> results/shap/, docs/figures/
   train_final.py       --check reproduces Run A; default trains the demo model
   build_premerge.py    rebuilds data/premerge_cleaned_dataset/ (2011-2016) from the raw files
   build_harmonized.py  rebuilds data/harmonized/ (2017-2021) from the raw files
@@ -162,7 +216,7 @@ src/salary_intel/   Python package
   clean_survey.py, harmonize.py, explore_survey.py, download_data.py
 app/                Flask web demo (see app/README.md)
 notebooks/          modeling, merge and EDA notebooks; cleaning/ = per-year cleaning + EDA
-docs/               schema mapping spreadsheet
+docs/               schema mapping spreadsheet; figures/ = SHAP plots used in this README
 data/               raw downloads and everything rebuilt from them (ignored)
 archive/            superseded notebooks (plus ignored old CSV outputs on disk)
 ```
@@ -179,6 +233,7 @@ python -m salary_intel.evaluate                # elastic-net reference, reproduc
 python -m salary_intel.train_trees --run A --tune [--append]   # LightGBM search, validation only (~15-30 min)
 python -m salary_intel.train_trees --run A --model catboost --tune --trials 8   # CatBoost search (~1 h per run)
 python -m salary_intel.train_trees --run A --test              # every frozen model -> results/model_comparison_A.csv
+python -m salary_intel.explain                 # SHAP for LightGBM detrended, Run A (~10 min; needs --test first)
 ```
 
 The web demo still uses the elastic net.
@@ -192,4 +247,6 @@ opened from any folder: their first cell changes to the repo root.
 - 2011-2014 salaries come as bands, not exact numbers.
 - The survey is not a random sample of developers.
 - About 11% of 2026 Industry answers never appear in training.
+- The operating-system question wasn't asked in 2017 or 2026, so "not asked" acts as an
+  era marker in the tree models (see the SHAP section).
 - The language count overlaps the language 0/1 columns.

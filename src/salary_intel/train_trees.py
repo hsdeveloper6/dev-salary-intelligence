@@ -144,7 +144,7 @@ def load_run(run):
     pre = TreePreprocessor()
     F_tr = pre.fit_transform(X_tr.copy())
     F_va, F_te = pre.transform(X_va.copy()), pre.transform(X_te.copy())
-    return dict(X=(X_tr, X_va, X_te), F=(F_tr, F_va, F_te), y=(y_tr, y_va, y_te))
+    return dict(X=(X_tr, X_va, X_te), F=(F_tr, F_va, F_te), y=(y_tr, y_va, y_te), pre=pre)
 
 
 class YearTrend:

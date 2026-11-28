@@ -17,6 +17,7 @@ dependencies = [
     "matplotlib",
     "lightgbm",
     "catboost",
+    "shap",
     # build_premerge runs the 2011-2016 cleaning notebooks
     "nbclient",
     "nbformat",

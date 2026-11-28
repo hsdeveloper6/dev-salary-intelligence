@@ -90,7 +90,7 @@ def display_view(F, grp):
     for c in ["survey_year", "Age", "YearsCode", "YearsCodePro", "OrgSize",
               "LanguageHaveWorkedWith_count"]:
         out[c] = F[c].astype(object).where(F[c].notna(), "blank")
-    for c in LIST_COLS:                                   # how many 0/1 columns are 1
+    for c in [c for c in LIST_COLS if (grp == c).any()]:   # how many 0/1 columns are 1
         out[c] = F[grp.index[grp == c]].sum(1).map(lambda n: f"{n} ticked")
     return pd.DataFrame(out, index=F.index)
 

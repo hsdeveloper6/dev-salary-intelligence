@@ -37,6 +37,8 @@ NOT_ASKED = {
     "RemoteWork": [2011, 2012, 2013, 2018, 2020, 2021],
     "LearnCode": [2011, 2012, 2013, 2014, 2020],
     "OpSys": [2017, 2026],
+    # 2026 asked MainBranch as "CodeMain"; the merge now renames it, so only ~5 blank 2026
+    # rows still get "Not asked". 2026 stays listed so the original data reproduces phase9.
     "MainBranch": list(range(2011, 2017)) + [2018, 2026],
     "LanguageWantToWorkWith": [2011, 2012, 2013],
     "PurchaseInfluence": [2016, 2018, 2021],
@@ -186,7 +188,7 @@ def finalize_numeric(data, numeric_imputer):
 def encode_lists(data, list_columns=None):
     """Cell 44 (6b): 0/1 columns per answer; reindexed to training columns if given."""
     parts = []
-    for col in LIST_COLS:
+    for col in present_lists(data):
         enc = data[col].astype("string").str.get_dummies(sep=";").add_prefix(col + "_")
         if list_columns is not None:
             enc = enc.reindex(columns=list_columns[col], fill_value=0)
@@ -194,8 +196,13 @@ def encode_lists(data, list_columns=None):
     return parts
 
 
+def present_lists(data):
+    """The multi-answer columns still in the data (an input can be dropped, e.g. OpSys)."""
+    return [c for c in LIST_COLS if c in data.columns]
+
+
 def assemble(data, parts):
-    return pd.concat([data.drop(columns=LIST_COLS), *parts], axis=1)
+    return pd.concat([data.drop(columns=present_lists(data)), *parts], axis=1)
 
 
 def make_prep_all():
@@ -212,12 +219,18 @@ def make_prep_all():
 
 
 class SalaryPreprocessor:
-    """Phases 5-6 fitted once, then replayed. Fit with the notebook's seed (42)."""
+    """Phases 5-6 fitted once, then replayed. Fit with the notebook's seed (42).
 
-    def __init__(self, seed=42):
+    drop: inputs to leave out entirely, e.g. ("OpSys",). The default () is the
+    notebooks' pipeline, which train_final --check reproduces.
+    """
+
+    def __init__(self, seed=42, drop=()):
         self.seed = seed
+        self.drop = tuple(drop)
 
     def _phase5(self, X):
+        X = X.drop(columns=list(self.drop))
         return impute_ycp(impute_age(X, self.age_pools, self._rng), self.ycp_models) \
             .drop(columns="WorkExp")
 
@@ -229,7 +242,7 @@ class SalaryPreprocessor:
         self.numeric_imputer = SimpleImputer(strategy="median").fit(d[BASE_NUMERIC])
         d = finalize_numeric(d, self.numeric_imputer)
         parts = encode_lists(d)
-        self.list_columns = {c: p.columns.tolist() for c, p in zip(LIST_COLS, parts)}
+        self.list_columns = {c: p.columns.tolist() for c, p in zip(present_lists(d), parts)}
         d = assemble(d, parts)
         self.prep_all = make_prep_all()
         return self.prep_all.fit_transform(d)

@@ -29,8 +29,8 @@ import re
 import numpy as np
 import pandas as pd
 
-from salary_intel.salary_pipeline import (CAT_COLS, LIST_COLS, encode_lists, fit_age_donors,
-                                          fit_ycp, impute_age, impute_ycp)
+from salary_intel.salary_pipeline import (CAT_COLS, encode_lists, fit_age_donors, fit_ycp,
+                                          impute_age, impute_ycp, present_lists)
 
 
 def _safe_names(columns):
@@ -49,10 +49,14 @@ def _safe_names(columns):
 
 
 class TreePreprocessor:
-    def __init__(self, seed=42):
+    """drop: inputs to leave out entirely, e.g. ("OpSys",) (see evaluate.DROP)."""
+
+    def __init__(self, seed=42, drop=()):
         self.seed = seed
+        self.drop = tuple(drop)
 
     def _phase5(self, X):
+        X = X.drop(columns=list(self.drop))
         out = impute_ycp(impute_age(X, self.age_pools, self._rng), self.ycp_models)
         return out.drop(columns=["WorkExp", "YearsCodePro_imputed"])
 
@@ -61,7 +65,7 @@ class TreePreprocessor:
             d[c] = pd.Categorical(d[c], categories=self.categories[c])
         parts = encode_lists(d, list_columns)
         dense = [p.sparse.to_dense().astype("uint8") for p in parts]
-        out = pd.concat([d.drop(columns=LIST_COLS), *dense], axis=1)
+        out = pd.concat([d.drop(columns=present_lists(d)), *dense], axis=1)
         return out, parts
 
     def fit_transform(self, X):
@@ -71,7 +75,7 @@ class TreePreprocessor:
         d = self._phase5(X)
         self.categories = {c: sorted(d[c].dropna().unique()) for c in CAT_COLS}
         out, parts = self._encode(d)
-        self.list_columns = {c: p.columns.tolist() for c, p in zip(LIST_COLS, parts)}
+        self.list_columns = {c: p.columns.tolist() for c, p in zip(present_lists(d), parts)}
         self.raw_names = out.columns.tolist()          # readable names, for SHAP later
         self.columns = _safe_names(self.raw_names)
         out.columns = self.columns

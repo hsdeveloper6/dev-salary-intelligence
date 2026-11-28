@@ -49,6 +49,11 @@ on my resume and talk about in interviews.
   (plain: R^2 0.54, ~$21.0k, RMSE 0.693, mean error -0.13).
   Run B R^2 0.65, median error ~$13.2k, RMSE 0.621 (variants identical).
   The variants tie on 2025 validation; the web demo still uses the elastic net.
+- CatBoost (same script, `--model catboost`, `results/catboost_params_{A,B}.json`)
+  is behind LightGBM on both runs: Run A test detrended RMSE 0.698, R^2 0.54,
+  ~$20.9k (plain 0.715, mean error -0.18); Run B RMSE 0.626, ~$13.4k. It got 14
+  trials per variant at learning rate 0.15 (vs LightGBM 60 at 0.05); a second,
+  widened round moved validation by <=0.0002.
 - Tree features drop the `YearsCodePro_imputed` flag: it is a pure era marker
   (1 for 2011-2016 and 2025-2026, ~0 otherwise).
 
@@ -77,8 +82,8 @@ on my resume and talk about in interviews.
     folder can be fully recreated by code, it can be untracked.
 2. LightGBM (`train_trees.py`) on the same splits and metrics; CatBoost as a
    comparison. Compare against elastic net fairly.
-   [LightGBM done: plain + detrended variants, both beat the elastic net on
-   both runs. Next: CatBoost reusing evaluate.py and tree_features.py.]
+   [done: LightGBM and CatBoost, plain + detrended variants, all beat the
+   elastic net on both runs; LightGBM is best.]
 3. SHAP explanations (global importance + per-prediction).
 4. Prediction intervals: quantile regression and/or conformal prediction;
    check coverage on 2026.

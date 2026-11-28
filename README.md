@@ -24,6 +24,8 @@ validation only, then frozen before the test set was scored once
 | Elastic net | 0.782 | 0.42 | $28.6k | −0.35 |
 | LightGBM, plain | 0.693 | 0.54 | $21.0k | −0.13 |
 | LightGBM, detrended | **0.683** | **0.56** | **$20.6k** | +0.06 |
+| CatBoost, plain | 0.715 | 0.52 | $22.6k | −0.18 |
+| CatBoost, detrended | 0.698 | 0.54 | $20.9k | +0.08 |
 
 **Test results, Run B:**
 
@@ -32,25 +34,36 @@ validation only, then frozen before the test set was scored once
 | Elastic net | 0.654 | 0.61 | $14.1k | −0.01 |
 | LightGBM, plain | 0.621 | 0.65 | $13.2k | −0.00 |
 | LightGBM, detrended | 0.621 | 0.65 | $13.2k | −0.00 |
+| CatBoost, plain | 0.626 | 0.65 | $13.4k | −0.01 |
+| CatBoost, detrended | 0.626 | 0.65 | $13.4k | −0.00 |
 
 - **Models:**
   - The elastic net is rescaled per Zou & Hastie 2005: alpha ≈ 0.00139, l1_ratio 0.95
     for Run A; alpha ≈ 0.00072, l1_ratio 0.99 for Run B.
-  - LightGBM was tuned with 60 random-search trials per variant, with early stopping
-    on validation.
+  - LightGBM was tuned with 60 random-search trials per variant (learning rate 0.05),
+    with early stopping on validation.
+  - CatBoost is 10-20x slower per fit here, so it got 14 trials per variant (learning
+    rate 0.15): 8, then 6 more on a widened grid. The second round improved validation
+    RMSE by at most 0.0002, so the gap to LightGBM isn't from too little tuning.
   - The *detrended* variant fits a straight line of log salary vs year on the training
-    rows, and LightGBM learns what the line misses. Trees can't extrapolate a year they
+    rows, and the trees learn what the line misses. Trees can't extrapolate a year they
     haven't seen, and the line carries wage growth into 2026.
 - **Mean error** is the average of predicted minus actual log salary. Negative means the
   model guesses too low on average. On the 2026 test, the elastic net is about 30% too
   low, plain LightGBM about 12% too low, and the detrended version about 6% too high.
-  In Run B the two LightGBM variants are identical, because there's no future year to
-  extrapolate to.
-- **The two LightGBM variants tie on validation** (2025: 0.6507 vs 0.6508). The detrended
-  one's edge shows only on 2026, so the choice between them shouldn't be read as tuned
-  on test.
-- **Grid edge:** LightGBM's chosen `min_child_samples` (800) is the largest value
-  searched for Run A. Extending the grid once moved validation RMSE by only about 0.001.
+  CatBoost shows the same pattern (plain about 17% too low, detrended about 8% too high).
+  In Run B the plain and detrended variants are identical, because there's no future
+  year to extrapolate to.
+- **Validation doesn't pick the detrended variant.** On 2025 the LightGBM variants tie
+  (0.6507 vs 0.6508), and plain CatBoost is ahead (0.6589 vs 0.6622). On 2026 detrended
+  wins for both models. A likely reason: 2025 is only one year past training, so
+  missing wage growth costs little there, and more the further out you predict. The
+  detrended rows' edge comes from 2026 only, so it shouldn't be read as tuned on test.
+- **LightGBM beats CatBoost** on both runs, on validation and test.
+- **Grid edges:** LightGBM's chosen `min_child_samples` (800) is the largest value
+  searched for Run A; extending the grid once moved validation RMSE by only about 0.001.
+  CatBoost's Run A detrended pick uses depth 10, the deepest searched; depth 12 would
+  make each tree about 4x slower.
 
 ## Data
 
@@ -141,7 +154,7 @@ src/salary_intel/   Python package
   salary_pipeline.py   preprocessing (Phases 3, 5, 6) as one SalaryPreprocessor object
   evaluate.py          shared splits, metrics and the elastic-net reference
   tree_features.py     features for tree models (TreePreprocessor)
-  train_trees.py       LightGBM: --tune on validation, --test with frozen settings
+  train_trees.py       LightGBM / CatBoost: --tune on validation, --test with frozen settings
   train_final.py       --check reproduces Run A; default trains the demo model
   build_premerge.py    rebuilds data/premerge_cleaned_dataset/ (2011-2016) from the raw files
   build_harmonized.py  rebuilds data/harmonized/ (2017-2021) from the raw files
@@ -164,7 +177,8 @@ python app/app.py                              # web demo at http://127.0.0.1:50
 
 python -m salary_intel.evaluate                # elastic-net reference, reproduces the notebooks' test RMSE
 python -m salary_intel.train_trees --run A --tune [--append]   # LightGBM search, validation only (~15-30 min)
-python -m salary_intel.train_trees --run A --test              # frozen settings -> results/model_comparison_A.csv
+python -m salary_intel.train_trees --run A --model catboost --tune --trials 8   # CatBoost search (~1 h per run)
+python -m salary_intel.train_trees --run A --test              # every frozen model -> results/model_comparison_A.csv
 ```
 
 The web demo still uses the elastic net.
